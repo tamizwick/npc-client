@@ -1,17 +1,19 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { BrowserRouter as Router, Switch, Route, Redirect } from 'react-router-dom';
+import { CircularProgress } from '@material-ui/core';
 import classes from './Page.module.css';
 
 import SignIn from '../Auth/SignIn/SignIn';
 import SignUp from '../Auth/SignUp/SignUp';
 import Characters from '../Characters/Characters';
+import NewCharacter from '../Characters/NewCharacter/NewCharacter';
 
 import { SignInData } from '../../interfaces';
 import { SignUpData } from '../../interfaces';
 
-//@TODO: Fetch all characters from Characters component.
 const Page: React.FC = () => {
     const [token, setToken] = useState('');
+    const [loading, setLoading] = useState(true);
 
     const signInHandler = (event: React.FormEvent<HTMLFormElement>, signInData: SignInData) => {
         event.preventDefault();
@@ -91,29 +93,35 @@ const Page: React.FC = () => {
         if (token) {
             setToken(token);
         }
-    }, [setToken, setAutoSignOut]);
+        setLoading(false);
+    }, [setToken, setLoading, setAutoSignOut]);
+
+    let routes = <CircularProgress color="secondary" />
+    if (!loading && !token.length) {
+        routes = (
+            <Switch>
+                <Route path="/signin" render={(props) => <SignIn submit={signInHandler} />} />
+                <Route path="/signup" render={(props) => <SignUp submit={signUpHandler} />} />
+                <Redirect to="/signin" />
+            </Switch >
+        );
+    } else if (!loading && token.length) {
+        routes = (
+            <Switch>
+                <Route path="/characters/new" render={(props) => <NewCharacter token={token} />} />
+                <Route path="/characters" render={(props) => <Characters token={token} />} />
+                <Redirect exact from="/" to="/characters" />
+                <Redirect exact from="/signin" to="/characters" />
+                <Redirect exact from="/signup" to="/characters" />
+                <Redirect to="/404" />
+            </Switch>
+        );
+    }
 
     return (
         <main className={classes.main}>
             <Router>
-                {!token ?
-                    <Switch>
-                        <Route path="/signin">
-                            <SignIn submit={signInHandler} />
-                        </Route>
-                        <Route path="/signup">
-                            <SignUp submit={signUpHandler} />
-                        </Route>
-                        <Redirect to="/signin" />
-                    </Switch>
-                    :
-                    <Switch>
-                        <Route path="/characters">
-                            <Characters token={token} />
-                        </Route>
-                        <Redirect to="/characters" />
-                    </Switch>
-                }
+                {routes}
             </Router>
         </main>
     );

@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { useHistory } from 'react-router-dom';
 import {
     Grid,
     Card,
     CardContent,
     Checkbox,
+    Button,
     FormControlLabel
 } from '@material-ui/core';
+import AddBoxOutlinedIcon from '@material-ui/icons/AddBoxOutlined';
 
 import { CharData } from '../../interfaces';
 
@@ -16,6 +19,8 @@ interface Props {
 const Characters: React.FC<Props> = ({ token }) => {
     const [allCharacters, setAllCharacters] = useState<CharData[]>([]);
     const [selectedCharacters, setSelectedCharacters] = useState<string[]>([]);
+
+    let history = useHistory();
 
     useEffect(() => {
         fetch('http://localhost:8080/characters', {
@@ -49,6 +54,10 @@ const Characters: React.FC<Props> = ({ token }) => {
         setSelectedCharacters(updatedSelectedChars);
     };
 
+    const newCharButtonHandler = () => {
+        history.push('/characters/new');
+    };
+
     const characterCards = allCharacters.map((char: CharData) => {
         return (
             <Grid item key={char._id}>
@@ -78,6 +87,7 @@ const Characters: React.FC<Props> = ({ token }) => {
         <div>
             <h1>All Characters</h1>
             { !allCharacters.length ? <p>You don't have any characters yet!</p> : null}
+            <Button onClick={newCharButtonHandler} color="primary"><AddBoxOutlinedIcon /> New Character</Button>
             <Grid container>
                 <div>{characterCards}</div>
             </Grid>
