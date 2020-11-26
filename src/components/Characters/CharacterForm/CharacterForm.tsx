@@ -54,19 +54,22 @@ const CharacterForm = (props: Props) => {
             value: [],
             label: "Race",
             required: false,
-            combo: false
+            combo: false,
+            options: []
         },
         gender: {
             value: '',
             label: "Gender",
             required: false,
-            combo: false
+            combo: false,
+            options: []
         },
         alignment: {
             value: '',
             label: "Alignment",
             required: false,
-            combo: false
+            combo: false,
+            options: []
         },
         appearance: {
             value: '',
@@ -78,19 +81,22 @@ const CharacterForm = (props: Props) => {
             value: [],
             label: "Known Associates",
             required: false,
-            combo: true
+            combo: true,
+            options: []
         },
         locations: {
             value: [],
             label: "Locations",
             required: false,
-            combo: false
+            combo: false,
+            options: []
         },
         factions: {
             value: [],
             label: "Factions",
             required: false,
-            combo: false
+            combo: false,
+            options: []
         },
         characteristics: {
             value: [],
@@ -114,24 +120,9 @@ const CharacterForm = (props: Props) => {
             value: [],
             label: "Campaigns",
             required: false,
-            combo: false
+            combo: false,
+            options: []
         }
-    });
-    const [options, setOptions] = useState({
-        firstName: [],
-        lastName: [],
-        pronunciation: [],
-        race: [],
-        gender: [],
-        alignment: [],
-        appearance: [],
-        knownAssociates: [],
-        locations: [],
-        factions: [],
-        characteristics: [],
-        biography: [],
-        notableInteractions: [],
-        campaigns: []
     });
     const history = useHistory();
 
@@ -176,76 +167,144 @@ const CharacterForm = (props: Props) => {
             });
     };
 
-    const inputs = Object.keys(formData).map((field) => {
-        let fieldData: {
-            value: string | string[];
-            label: string;
-            required: boolean;
-        };
-        let jsx;
-        if (hasKey(formData, field)) {
-            fieldData = formData[field];
-            const isArray = Array.isArray(fieldData.value);
-            let error: boolean;
-            if (isArray) {
-                jsx = (
-                    <Autocomplete
-                        key={field}
-                        freeSolo={!formData[field].combo}
-                        id={field}
-                        options={options[field]}
-                        multiple
-                        onChange={(e, val) => inputHandler(e, val, field)}
-                        onBlur={(event) => {
-                            const el = event.target as HTMLInputElement;
-                            if (el.value.length) {
-                                error = true
+    const createInputs = (fields: {}) => {
+        return Object.keys(fields).map((field) => {
+            let fieldData: {
+                value: string | string[];
+                label: string;
+                required: boolean;
+                combo: boolean;
+                options?: string[];
+            };
+            let jsx;
+            if (hasKey(fields, field)) {
+                fieldData = fields[field];
+                const isArray = Array.isArray(fieldData.value);
+                let error: boolean;
+                if (isArray) {
+                    jsx = (
+                        <Autocomplete
+                            key={field}
+                            freeSolo={!fieldData.combo}
+                            id={field}
+                            options={fieldData.options ? fieldData.options : []}
+                            multiple
+                            onChange={(e, val: string[]) => inputHandler(e, val, field)}
+                            onBlur={(event) => {
+                                const el = event.target as HTMLInputElement;
+                                if (el.value.length) {
+                                    error = true
+                                }
+                            }}
+                            renderTags={(value: string[], getTagProps) =>
+                                value.map((option: string, index: number) => (
+                                    <Chip variant="outlined" label={option} {...getTagProps({ index })} />
+                                ))
                             }
-                        }}
-                        renderTags={(value: string[], getTagProps) => {
-                            return value.map((option: string, index: number) => (
-                                <Chip variant="outlined" label={option} {...getTagProps({ index })} />
-                            ));
-                        }
-                        }
-                        renderInput={(params) => (
-                            <TextField
-                                {...params}
-                                label={fieldData.label}
-                                required={fieldData.required}
-                                error={error}
-                                name={field} />
-                        )} />
-                );
-            } else {
-                jsx = (
-                    <Autocomplete
-                        key={field}
-                        freeSolo
-                        id={field}
-                        options={options[field]}
-                        onInputChange={(e, val) => inputHandler(e, val, field)}
-                        renderInput={(params) => (
-                            <TextField
-                                {...params}
-                                label={fieldData.label}
-                                required={fieldData.required}
-                                name={field} />
-                        )} />
-                );
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    label={fieldData.label}
+                                    required={fieldData.required}
+                                    error={error}
+                                    name={field} />
+                            )} />
+                    );
+                } else {
+                    jsx = (
+                        <Autocomplete
+                            key={field}
+                            freeSolo
+                            id={field}
+                            options={fieldData.options ? fieldData.options : []}
+                            onInputChange={(e, val) => inputHandler(e, val, field)}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    label={fieldData.label}
+                                    required={fieldData.required}
+                                    name={field} />
+                            )} />
+                    );
+                }
             }
-        }
-        return jsx;
-    })
+            return jsx;
+        });
+    };
+
+    const identityInputs = createInputs({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        pronunciation: formData.pronunciation,
+        campaigns: formData.campaigns
+    });
+
+    const demographicInputs = createInputs({
+        race: formData.race,
+        gender: formData.gender,
+        alignment: formData.alignment
+    });
+
+    const roleplayInputs = createInputs({
+        appearance: formData.appearance,
+        characteristics: formData.characteristics,
+        biography: formData.biography
+    });
+
+    const logisticsInputs = createInputs({
+        knownAssociates: formData.knownAssociates,
+        locations: formData.locations,
+        factions: formData.factions,
+        notableInteractions: formData.notableInteractions
+    });
 
     useEffect(() => {
-        //@TODO: Dynamically get options.
+        fetch('http://localhost:8080/characters/options', {
+            headers: {
+                'Authorization': `Bearer ${props.token}`
+            }
+        })
+            .then((res) => {
+                return res.json();
+            })
+            .then((response) => {
+                const options = response.options;
+                for (const optName in options) {
+                    if (hasKey(formData, optName)) {
+                        setFormData((prevState) => {
+                            return {
+                                ...prevState,
+                                [optName]: {
+                                    ...formData[optName],
+                                    options: options[optName]
+                                }
+                            }
+                        });
+                    }
+                }
+            })
+            .catch((err) => console.log(err));
         //@TODO: Known associates needs to be a character ID.
-    }, []);
+    });
 
     return (
         <form onSubmit={(e) => submitHandler(e)}>
-            {inputs}
+            <div>
+                <h2>Identity</h2>
+                {identityInputs}
+            </div>
+            <div>
+                <h2>Demographics</h2>
+                {demographicInputs}
+            </div>
+            <div>
+                <h2>Roleplay Details</h2>
+                {roleplayInputs}
+            </div>
+            <div>
+                <h2>Logistics and Associations</h2>
+                {logisticsInputs}
+            </div>
             <Button
                 color="primary"
                 variant="contained"
