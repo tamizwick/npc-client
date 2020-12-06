@@ -28,6 +28,7 @@ interface CharFormData {
     biography: string;
     notableInteractions: string[];
     campaigns: string[];
+    _id?: string;
 }
 
 const CharacterForm = (props: Props) => {
@@ -81,8 +82,7 @@ const CharacterForm = (props: Props) => {
             value: [],
             label: "Known Associates",
             required: false,
-            combo: true,
-            options: []
+            combo: true
         },
         locations: {
             value: [],
@@ -124,6 +124,7 @@ const CharacterForm = (props: Props) => {
             options: []
         }
     });
+    const [charsByCampaign, setCharsByCampaign] = useState([]);
     const history = useHistory();
 
     const inputHandler = (event: React.ChangeEvent<{}>, val: string | string[], field: string) => {
@@ -181,7 +182,45 @@ const CharacterForm = (props: Props) => {
                 fieldData = fields[field];
                 const isArray = Array.isArray(fieldData.value);
                 let error: boolean;
-                if (isArray) {
+                if (field === 'knownAssociates') {
+                    //@TODO: Handle input for known associates. Need to add _id to the formData.
+                    jsx = (
+                        <Autocomplete
+                            key={field}
+                            freeSolo={!fieldData.combo}
+                            id={field}
+                            options={charsByCampaign}
+                            getOptionLabel={(option: CharFormData) => `${option.firstName} ${option.lastName}`}
+                            multiple
+                            onChange={(e, val) => {
+                                if (val) {
+                                    const values = val.map((char) => {
+                                        return typeof (char) === 'object' && typeof (char._id) === 'string' ? char._id : '';
+                                    });
+                                    inputHandler(e, values, field);
+                                }
+                            }}
+                            onBlur={(event) => {
+                                const el = event.target as HTMLInputElement;
+                                if (el.value.length) {
+                                    error = true
+                                }
+                            }}
+                            renderTags={(value, getTagProps) =>
+                                value.map((option, index: number) => (
+                                    <Chip variant="outlined" label={`${option.firstName} ${option.lastName}`} {...getTagProps({ index })} />
+                                ))
+                            }
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    label={fieldData.label}
+                                    required={fieldData.required}
+                                    error={error}
+                                    name={field} />
+                            )} />
+                    );
+                } else if (isArray) {
                     jsx = (
                         <Autocomplete
                             key={field}
@@ -189,7 +228,7 @@ const CharacterForm = (props: Props) => {
                             id={field}
                             options={fieldData.options ? fieldData.options : []}
                             multiple
-                            onChange={(e, val: string[]) => inputHandler(e, val, field)}
+                            onChange={(e, val) => inputHandler(e, val, field)}
                             onBlur={(event) => {
                                 const el = event.target as HTMLInputElement;
                                 if (el.value.length) {
@@ -284,8 +323,23 @@ const CharacterForm = (props: Props) => {
                 }
             })
             .catch((err) => console.log(err));
-        //@TODO: Known associates needs to be a character ID.
-    });
+    }, []);
+
+    useEffect(() => {
+        const campaigns = formData.campaigns.value.join(',');
+        fetch(`http://localhost:8080/characters?campaigns=${campaigns}`, {
+            headers: {
+                'Authorization': `Bearer ${props.token}`
+            }
+        })
+            .then((res) => {
+                return res.json();
+            })
+            .then((response) => {
+                setCharsByCampaign(response.characters);
+            })
+            .catch((err) => console.log(err));
+    }, [props.token, formData.campaigns.value]);
 
     return (
         <form onSubmit={(e) => submitHandler(e)}>
